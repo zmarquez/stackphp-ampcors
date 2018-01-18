@@ -1,0 +1,18 @@
+{
+    "name": "zmarquez/stackphp-ampcors",
+    "description": "AMP CORS middleware for StackPHP",
+    "keywords": [ "stack", "amp", "cors" ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Zacarías Márquez"
+        }
+    ],
+    "require": {
+        "php": ">=5.4.0",
+        "symfony/http-kernel": "~2.1"
+    },
+    "autoload": {
+        "psr-4": { "Zmc\\Stack\\": "src" }
+    }
+}

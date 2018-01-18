@@ -1,7 +1,7 @@
 AMP CORS middleware for StackPHP
 ==============================
 
-This package contains a [StackPHP](http://stackphp.com/) middleware that manage the AMP security CORS.
+This package contains a [StackPHP](http://stackphp.com/) middleware that manage the AMP security CORS requests.
 
 Example
 -------
@@ -9,14 +9,14 @@ Example
 ```php
 <?php
 
-use Avs\Stack\AmpCorsMiddleware;
+use Zmc\Stack\AmpCorsMiddleware;
 
 require_once __DIR__ . '../vendor/autoload.php';
 
 $app = new Silex\Application();
 
 $stack = (new Stack\Builder())
-    ->push(AmpCorsMiddleware::class, ['publisherValidOrigins' => ['http://www.example.com']]);
+    ->push(AmpCorsMiddleware::class, 'https://example.com');
 
 $app = $stack->resolve($app);
 
