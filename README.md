@@ -1,7 +1,7 @@
 AMP CORS middleware for StackPHP
 ==============================
 
-This package contains a [StackPHP](http://stackphp.com/) middleware that manage the AMP security CORS requests.
+This package contains a [StackPHP](http://stackphp.com/) middleware that manages the AMP security CORS requests.
 
 Example
 -------

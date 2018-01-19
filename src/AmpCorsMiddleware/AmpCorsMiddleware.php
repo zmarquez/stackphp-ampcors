@@ -18,13 +18,6 @@ class AmpCorsMiddleware implements HttpKernelInterface
     /** @var string */
     private $publisherOrigin;
 
-    private $validOrigins = [
-        '{$publisherOrigin}',
-        '{$publisherOriginFormatted}.cdn.ampproject.org',
-        '{$publisherOrigin}.amp.cloudflare.com',
-        'https://cdn.ampproject.org'
-    ];
-
     /**
      * @param HttpKernelInterface $app
      * @param string              $publisherOrigin
@@ -32,11 +25,10 @@ class AmpCorsMiddleware implements HttpKernelInterface
     public function __construct(HttpKernelInterface $app, $publisherOrigin)
     {
         $this->app = $app;
-        if (!$this->containsProtocol($publisherOrigin)) {
-            throw new \InvalidArgumentException('Publisher origin needs protocol');
+        if (!$this->isSecureUri($publisherOrigin)) {
+            throw new \InvalidArgumentException('Publisher origin protocol needs to be https');
         }
         $this->publisherOrigin = $publisherOrigin;
-        $this->prepareValidOrigins();
     }
 
     /**
@@ -49,17 +41,16 @@ class AmpCorsMiddleware implements HttpKernelInterface
         }
 
         $ampSourceOrigin = $request->query->get(self::AMP_SOURCE_ORIGIN_PARAMETER);
-        if ($this->requestContainsSameOrigin($request)) {
-            $origin = $ampSourceOrigin;
-        } elseif ($this->isValidOrigin($request->headers->get(self::ORIGIN_HEADER)) &&
-            $this->isValidAmpSourceOrigin($ampSourceOrigin)) {
-            $origin = $request->headers->get(self::ORIGIN_HEADER);
-        } else {
+        $origin = $this->retrieveOrigin($request, $ampSourceOrigin);
+
+        if (is_null($origin)) {
             return $this->createUnauthorizedResponse('Unauthorized Request');
         }
 
         $request->query->remove(self::AMP_SOURCE_ORIGIN_PARAMETER);
+
         $response = $this->app->handle($request, $type, $catch);
+
         $response->headers->set('Access-Control-Allow-Origin', $origin);
         $response->headers->set('AMP-Access-Control-Allow-Source-Origin', $ampSourceOrigin);
         $response->headers->set('Access-Control-Expose-Headers', 'AMP-Access-Control-Allow-Source-Origin');
@@ -72,27 +63,42 @@ class AmpCorsMiddleware implements HttpKernelInterface
      *
      * @return bool
      */
-    private function containsProtocol($uri)
+    private function isSecureUri($uri)
     {
-        return (bool) preg_match('/https:\/\//i', $uri);
+        return (bool)preg_match('/https:\/\//i', $uri);
     }
 
-    private function prepareValidOrigins()
+    /**
+     * @return array
+     */
+    private function createValidOrigins()
     {
-        $validOrigins = [];
-        $publisherOriginFormatted = str_replace('.', '-', str_replace('-', '--', $this->publisherOrigin));
+        return [
+            $this->publisherOrigin,
+            sprintf('%s.cdn.ampproject.org', str_replace('.', '-', str_replace('-', '--', $this->publisherOrigin))),
+            sprintf('%s.amp.cloudflare.com', $this->publisherOrigin),
+            'https://cdn.ampproject.org'
+        ];
+    }
 
-        foreach ($this->validOrigins as $validOrigin) {
-            $validOrigins[] = strstr(
-                $validOrigin,
-                [
-                    '{$publisherOrigin}' => $this->publisherOrigin,
-                    '{$publisherOriginFormatted}' => $publisherOriginFormatted
-                ]
-            );
+    /**
+     * @param Request $request
+     * @param string  $ampSourceOrigin
+     *
+     * @return null|string
+     */
+    private function retrieveOrigin(Request $request, $ampSourceOrigin)
+    {
+        if ($this->requestContainsSameOrigin($request)) {
+            return $ampSourceOrigin;
         }
 
-        $this->validOrigins = $validOrigins;
+        $origin = $request->headers->get(self::ORIGIN_HEADER);
+        if ($this->isValidOrigin($origin) && $this->isValidAmpSourceOrigin($ampSourceOrigin)) {
+            return $origin;
+        }
+
+        return null;
     }
 
     /**
@@ -102,10 +108,6 @@ class AmpCorsMiddleware implements HttpKernelInterface
      */
     private function requestContainsSameOrigin(Request $request)
     {
-        if (!$this->isAmpRequest($request)) {
-            return false;
-        }
-
         return $request->headers->get(self::AMP_SAME_ORIGIN_HEADER) == 'true';
     }
 
@@ -116,17 +118,9 @@ class AmpCorsMiddleware implements HttpKernelInterface
      */
     private function isValidOrigin($origin)
     {
-        if (is_null($origin)) {
-            return false;
-        }
+        $validOrigins = $this->createValidOrigins();
 
-        foreach ($this->validOrigins as $validOrigin) {
-            if ($origin === $validOrigin) {
-                return true;
-            }
-        }
-
-        return false;
+        return in_array($origin, $validOrigins);
     }
 
     /**
