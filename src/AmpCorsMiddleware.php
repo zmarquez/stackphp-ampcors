@@ -25,9 +25,6 @@ class AmpCorsMiddleware implements HttpKernelInterface
     public function __construct(HttpKernelInterface $app, $publisherOrigin)
     {
         $this->app = $app;
-        if (!$this->isSecureUri($publisherOrigin)) {
-            throw new \InvalidArgumentException('Publisher origin protocol needs to be https');
-        }
         $this->publisherOrigin = $publisherOrigin;
     }
 
@@ -56,16 +53,6 @@ class AmpCorsMiddleware implements HttpKernelInterface
         $response->headers->set('Access-Control-Expose-Headers', 'AMP-Access-Control-Allow-Source-Origin');
 
         return $response;
-    }
-
-    /**
-     * @param string $uri
-     *
-     * @return bool
-     */
-    private function isSecureUri($uri)
-    {
-        return (bool)preg_match('/https:\/\//i', $uri);
     }
 
     /**
