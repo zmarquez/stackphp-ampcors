@@ -18,14 +18,20 @@ class AmpCorsMiddleware implements HttpKernelInterface
     /** @var string */
     private $publisherOrigin;
 
+    /** @var array */
+    private $queryString;
+
     /**
      * @param HttpKernelInterface $app
-     * @param string              $publisherOrigin
+     * @param array               $options
      */
-    public function __construct(HttpKernelInterface $app, $publisherOrigin)
+    public function __construct(HttpKernelInterface $app, array $options)
     {
         $this->app = $app;
-        $this->publisherOrigin = $publisherOrigin;
+        $this->publisherOrigin = (isset($options['publisherOrigin'])) ? $options['publisherOrigin'] : '';
+        $this->queryString = (isset($options['queryString']) && is_array($options['queryString'])) ?
+            $options['queryString'] :
+            [];
     }
 
     /**
@@ -45,6 +51,7 @@ class AmpCorsMiddleware implements HttpKernelInterface
         }
 
         $request->query->remove(self::AMP_SOURCE_ORIGIN_PARAMETER);
+        $request = $this->addParameters($request);
 
         $response = $this->app->handle($request, $type, $catch);
 
@@ -138,5 +145,17 @@ class AmpCorsMiddleware implements HttpKernelInterface
     private function isAmpRequest(Request $request)
     {
         return !is_null($request->query->get(self::AMP_SOURCE_ORIGIN_PARAMETER));
+    }
+
+    /**
+     * @param Request $request
+     *
+     * @return Request
+     */
+    private function addParameters(Request $request)
+    {
+        $request->query->add($this->queryString);
+
+        return $request;
     }
 }
